@@ -56,6 +56,23 @@ export default function PlantDetail() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-tag-dark">{plant.name}</h1>
 
+      <div className="bg-white rounded-xl shadow p-4 grid grid-cols-3 gap-4 max-w-2xl text-sm">
+        <div>
+          <div className="text-xs text-gray-500">Route checkpoints</div>
+          <div className="font-semibold">{plant.checkpoints.length}</div>
+        </div>
+        <div>
+          <div className="text-xs text-gray-500">Round count</div>
+          <div className="font-semibold">{plant.roundSchedules.length}</div>
+        </div>
+        <div>
+          <div className="text-xs text-gray-500">Target (rounds x checkpoints)</div>
+          <div className="font-semibold">
+            {plant.targetCount} ({plant.roundSchedules.length} x {plant.checkpoints.length})
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl shadow p-4 grid grid-cols-2 gap-4 max-w-2xl">
         <label className="text-sm">
           Target Count
@@ -86,12 +103,17 @@ export default function PlantDetail() {
       </div>
 
       <div className="bg-white rounded-xl shadow p-4">
-        <h2 className="font-semibold mb-3">Checkpoints & Aliases</h2>
+        <h2 className="font-semibold mb-3">Route Order, Checkpoints & Aliases</h2>
         <div className="space-y-3">
-          {plant.checkpoints.map((cp: any) => (
+          {plant.checkpoints.map((cp: any, idx: number) => (
             <div key={cp.id} className="border rounded p-3">
               <div className="flex justify-between items-center">
-                <span className="font-medium">{cp.name}</span>
+                <span className="font-medium">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-tag-dark text-white text-xs mr-2">
+                    {idx + 1}
+                  </span>
+                  {cp.name}
+                </span>
                 <button onClick={() => removeCheckpoint(cp.id)} className="text-xs text-red-600">
                   Remove
                 </button>

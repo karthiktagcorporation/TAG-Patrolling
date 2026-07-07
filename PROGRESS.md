@@ -1,5 +1,93 @@
 # PROGRESS
 
+## 2026-07-07 (later) — Excel-driven master data update
+
+Source: `PUNCHING STATIONS - Copy for GM.xlsx`. This was an **update**, not a
+rebuild — existing `ValidationReport`/`ParsedRecord`/`ValidationIssue`
+history is untouched and remains viewable in History.
+
+- **Prisma migration** `20260707171314_route_order_and_round_schedule_v2`
+  (additive only, no data loss): added `ParsedRecord.outOfSequence`
+  (Boolean, default false) and `ValidationReport.outOfSequenceCount` (Int,
+  default 0) + `ValidationReport.roundSummaryJson` (String, nullable).
+  Existing rows backfilled with the defaults automatically.
+- **Reseed required and performed** (`npm run prisma:seed`): all 7 plants'
+  checkpoints and round schedules were fully replaced with the new
+  Excel-driven values (old Checkpoint/RoundSchedule rows deleted and
+  recreated per plant — safe because ParsedRecord/ValidationReport store
+  their own copy of checkpoint names as text and have no DB foreign key to
+  Checkpoint, so old reports still display correctly even though the
+  Checkpoint rows they once matched no longer exist).
+- **New round schedule model**: two interval families, both starting at
+  23:00 as Round 1 — 30-minute/13-round (TAG 1A, TAG 1B, TAG 3, STK, SSVF)
+  and 40-minute/10-round (TAG 2, TAG 4). Round times wrap past midnight
+  correctly (existing circular-distance logic in
+  `findNearestRound` already handled this, unchanged).
+- **New/changed target counts**: TAG 1A 28→52, TAG 1B 28→52, TAG 2 77→80,
+  TAG 3 49→91, TAG 4 28→40, STK 21→39, SSVF 21→39. All equal
+  rounds × checkpoints.
+- **TAG 2 route changed**: now 8 checkpoints (Material Gate, Shed 3
+  Compound Wall, Before Utility Building, Irrigation Well, S2 A Corner,
+  Remaining Material Area, Near Temple outside S1, Office Gate) — note
+  "Before Utility Building" is now an official master checkpoint (it was
+  previously flagged EXTRA against the old 11-checkpoint list). Four old
+  checkpoints (S2 Tool Room, S2 Forging Section, Waiting For Forging, S1
+  inside Opposite to temple) were dropped from the route.
+- **Route-order (sequence) validation added**: within each round, punches
+  are checked against the master's configured checkpoint order (the
+  `Checkpoint.order` field, already existed, now also drives this). A
+  punch whose route-order regresses relative to the highest order already
+  seen in that round is flagged `outOfSequence: true` on the `ParsedRecord`
+  and generates an `OUT_OF_SEQUENCE` issue row. **This is additive/
+  informational only** — it does not change VALID/ALIAS_MATCHED status or
+  achieved-count scoring, since the spec asked to "detect" out-of-sequence
+  punches, not exclude them from achievement. See
+  `server/src/services/validationEngine.ts`.
+- **Round-wise validation summary added**: `ValidationReport.roundSummaryJson`
+  stores, per round, the expected vs. achieved checkpoint list in route
+  order — computed once at validation time and persisted so reprinting a
+  saved report from History shows the same summary without re-parsing.
+- **UI updates**: Plant Master now shows route-order numbers on each
+  checkpoint plus a Route checkpoints / Round count / Target summary strip;
+  Report Result now has an `OUT_OF_SEQUENCE` filter chip, a Sequence column
+  ("OUT OF ORDER" badge) in the detailed records table, and a new
+  "Round-wise Validation Summary" section.
+- **Logo**: `TagLogo.tsx` rewritten to prefer a real image file at
+  `client/public/tag-logo.png` (only `height` is set in CSS, `width` stays
+  `auto`, so aspect ratio is always preserved — no distortion possible),
+  falling back to the existing SVG recreation via `<img onError>` if the
+  file isn't present yet (it isn't, in this repo — see "manual follow-up"
+  below). Added a print-only branded letterhead (logo + plant + date) to
+  the Report Result print/PDF output, which previously had no logo at all
+  since the sidebar (where the only logo was) is hidden via `.no-print`
+  when printing.
+- **Retested against real sample PDFs** with the new schedule (see
+  HANDOVER.md for the updated table): round-window matching, round-wise
+  summary, and target math all confirmed correct against the new 13-round
+  and 10-round schedules. Old samples now show more MISSING/EXTRA than
+  before, which is expected — they were captured under the old
+  hourly/7-round and 11-checkpoint assumptions, not a parser regression.
+
+### Files changed in this update
+
+- `prisma/schema.prisma`, new migration under `prisma/migrations/`
+- `server/src/seed.ts` (fully rewritten)
+- `server/src/services/validationEngine.ts` (sequence + round-summary logic)
+- `server/src/routes/plants.ts` (order-by added to checkpoint/round queries)
+- `client/src/pages/PlantDetail.tsx`, `client/src/pages/ReportView.tsx`
+- `client/src/components/TagLogo.tsx`, `client/src/index.css`
+- `README.md`, `PROGRESS.md`, `HANDOVER.md`
+
+### Reseed / migration required for anyone else running this app
+
+Anyone with an existing local/deployed database must run, in order:
+```
+npm run prisma:migrate --prefix server   # applies the new columns
+npm run prisma:seed --prefix server      # replaces route/round/target data
+```
+History is preserved; only Plant Master (checkpoints/rounds/targets) is
+replaced.
+
 ## 2026-07-07 — Initial build
 
 - Scaffolded full-stack project: `client/` (Vite+React+TS+Tailwind),

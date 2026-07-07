@@ -59,8 +59,30 @@ limitations discovered while testing against real sample PDFs.
 
 ## Logo
 
-`client/src/components/TagLogo.tsx` is a same-size SVG/CSS placeholder that
-reproduces the reference mark (grey T/G, red A with white arrow, red/grey
-"POWER TO PEOPLE" wordmark). To use the real artwork, drop a same-height
-image at `client/public/tag-logo.png` and swap the `<svg>` block for an
-`<img src="/tag-logo.png" style={{ height }} />`.
+`client/src/components/TagLogo.tsx` renders `client/public/tag-logo.png` if
+present (only `height` is ever set in CSS, `width` is always `auto`, so the
+image's own natural aspect ratio is preserved everywhere it's used — login,
+sidebar header, and the print/PDF letterhead — with no distortion). If that
+file is missing, it falls back to an accurate SVG recreation of the mark so
+the app still renders correctly out of the box.
+
+**To use the real logo file**: save it as `client/public/tag-logo.png`
+(any resolution — it's scaled by height only) and it is picked up
+automatically, no code change needed.
+
+## Plant master data (route patterns, round schedules, targets)
+
+Source of truth: `PUNCHING STATIONS - Copy for GM.xlsx` (2026-07-07 update),
+transcribed into `server/src/seed.ts`. Two round-schedule families are used,
+both starting at 23:00 (Round 1, per the business rule that 11:00 PM is
+always the first round):
+
+| Plants | Interval | Rounds | Checkpoints | Target |
+|---|---|---|---|---|
+| TAG 1A, TAG 1B, TAG 3, STK, SSVF | 30 min | 13 (23:00→05:00) | 4 / 4 / 7 / 3 / 3 | 52 / 52 / 91 / 39 / 39 |
+| TAG 2, TAG 4 | 40 min | 10 (23:00→05:00) | 8 / 4 | 80 / 40 |
+
+Target count = rounds × checkpoints in every case. Route order (used for
+out-of-sequence detection) is the checkpoint list order above, editable per
+plant in Plant Master. See [PROGRESS.md](PROGRESS.md) for the full checkpoint
+lists and [HANDOVER.md](HANDOVER.md) for the route-order validation logic.

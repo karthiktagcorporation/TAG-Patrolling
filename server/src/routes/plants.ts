@@ -7,7 +7,10 @@ router.use(requireAuth);
 
 router.get("/", async (_req, res) => {
   const plants = await prisma.plant.findMany({
-    include: { checkpoints: { include: { aliases: true } }, roundSchedules: true },
+    include: {
+      checkpoints: { orderBy: { order: "asc" }, include: { aliases: true } },
+      roundSchedules: { orderBy: { order: "asc" } }
+    },
     orderBy: { name: "asc" }
   });
   res.json(plants);
@@ -16,7 +19,10 @@ router.get("/", async (_req, res) => {
 router.get("/:id", async (req, res) => {
   const plant = await prisma.plant.findUnique({
     where: { id: req.params.id },
-    include: { checkpoints: { include: { aliases: true } }, roundSchedules: true }
+    include: {
+      checkpoints: { orderBy: { order: "asc" }, include: { aliases: true } },
+      roundSchedules: { orderBy: { order: "asc" } }
+    }
   });
   if (!plant) return res.status(404).json({ error: "Plant not found" });
   res.json(plant);

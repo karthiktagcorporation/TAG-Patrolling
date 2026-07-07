@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api/client";
+import TagLogo from "../components/TagLogo";
 
 const BADGE: Record<string, string> = {
   VALID: "bg-green-100 text-green-700",
@@ -10,7 +11,8 @@ const BADGE: Record<string, string> = {
   EXTRA: "bg-orange-100 text-orange-700",
   MALFUNCTION: "bg-purple-100 text-purple-700",
   OUT_OF_TIME: "bg-pink-100 text-pink-700",
-  REVIEW_REQUIRED: "bg-blue-100 text-blue-700"
+  REVIEW_REQUIRED: "bg-blue-100 text-blue-700",
+  OUT_OF_SEQUENCE: "bg-indigo-100 text-indigo-700"
 };
 
 function Badge({ status }: { status: string }) {
@@ -38,8 +40,24 @@ export default function ReportView() {
   const filteredRecords = useMemo(() => {
     if (!report) return [];
     if (filter === "ALL") return report.parsedRecords;
+    if (filter === "OUT_OF_SEQUENCE") return report.parsedRecords.filter((r: any) => r.outOfSequence);
     return report.parsedRecords.filter((r: any) => r.status === filter);
   }, [report, filter]);
+
+  const roundSummary = useMemo(() => {
+    if (!report?.roundSummaryJson) return null;
+    try {
+      return JSON.parse(report.roundSummaryJson) as {
+        label: string;
+        startTime: string;
+        expectedCount: number;
+        achievedCount: number;
+        checkpoints: { checkpointId: string; name: string; order: number; status: string }[];
+      }[];
+    } catch {
+      return null;
+    }
+  }, [report]);
 
   async function submitRemarks() {
     if (!remarks.trim()) {
@@ -64,11 +82,22 @@ export default function ReportView() {
     { label: "Extra", value: report.extraCount },
     { label: "Malfunction", value: report.malfunctionCount },
     { label: "Review Required", value: report.reviewCount },
+    { label: "Out of Sequence", value: report.outOfSequenceCount ?? 0 },
     { label: "Generated", value: new Date(report.createdAt).toLocaleString() }
   ];
 
   return (
     <div className="space-y-6">
+      <div className="print-only items-center gap-3 mb-2">
+        <TagLogo height={48} />
+        <div>
+          <div className="font-bold text-lg">TAG Patrolling — Validation Result</div>
+          <div className="text-sm text-gray-600">
+            {report.plant.name} · {report.patrolDate}
+          </div>
+        </div>
+      </div>
+
       <div className="flex justify-between items-center no-print">
         <h1 className="text-2xl font-bold text-tag-dark">Validation Result</h1>
         <button onClick={() => setShowRemarksModal(true)} className="bg-tag-red text-white px-4 py-2 rounded font-semibold">
@@ -94,7 +123,18 @@ export default function ReportView() {
 
       <div className="bg-white rounded-xl shadow p-4 no-print">
         <div className="flex gap-2 flex-wrap">
-          {["ALL", "VALID", "ALIAS_MATCHED", "MISSING", "DUPLICATE", "EXTRA", "MALFUNCTION", "OUT_OF_TIME", "REVIEW_REQUIRED"].map(
+          {[
+            "ALL",
+            "VALID",
+            "ALIAS_MATCHED",
+            "MISSING",
+            "DUPLICATE",
+            "EXTRA",
+            "MALFUNCTION",
+            "OUT_OF_TIME",
+            "REVIEW_REQUIRED",
+            "OUT_OF_SEQUENCE"
+          ].map(
             (f) => (
               <button
                 key={f}
@@ -119,6 +159,7 @@ export default function ReportView() {
               <th>Time</th>
               <th>Status</th>
               <th>Match Type</th>
+              <th>Sequence</th>
             </tr>
           </thead>
           <tbody>
@@ -132,11 +173,58 @@ export default function ReportView() {
                   <Badge status={r.status} />
                 </td>
                 <td>{r.matchType ?? "—"}</td>
+                <td>
+                  {r.outOfSequence ? (
+                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-indigo-100 text-indigo-700">
+                      OUT OF ORDER
+                    </span>
+                  ) : r.matchedRound ? (
+                    <span className="text-xs text-gray-400">OK</span>
+                  ) : (
+                    "—"
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {roundSummary && (
+        <div className="bg-white rounded-xl shadow p-4">
+          <h2 className="font-semibold mb-3">Round-wise Validation Summary</h2>
+          <div className="space-y-3">
+            {roundSummary.map((r) => (
+              <div key={r.label} className="border rounded p-3">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-medium">
+                    {r.label} <span className="text-gray-400 font-normal">({r.startTime})</span>
+                  </span>
+                  <span
+                    className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                      r.achievedCount === r.expectedCount ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {r.achievedCount} / {r.expectedCount}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {r.checkpoints.map((c) => (
+                    <span
+                      key={c.checkpointId}
+                      className={`px-2 py-0.5 rounded text-xs ${
+                        c.status === "MISSING" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"
+                      }`}
+                    >
+                      {c.order + 1}. {c.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow p-4 no-print">
         <button onClick={() => setShowRaw((s) => !s)} className="text-sm text-tag-red font-semibold">

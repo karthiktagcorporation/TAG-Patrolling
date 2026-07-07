@@ -74,6 +74,8 @@ model ValidationReport {
   malfunctionCount  Int
   reviewCount       Int
   outOfTimeCount    Int
+  outOfSequenceCount Int              @default(0)
+  roundSummaryJson  String?
   remarks           String?
   createdAt         DateTime          @default(now())
 
@@ -97,6 +99,7 @@ model ParsedRecord {
   matchedRound       String?
   status             String
   confidence         Float?
+  outOfSequence      Boolean           @default(false)
 
   report             ValidationReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
 }

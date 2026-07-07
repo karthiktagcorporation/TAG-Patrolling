@@ -14,6 +14,21 @@ export type IssueCategory =
   | "ALIAS_MATCHED"
   | "REVIEW_REQUIRED";
 
+export interface RoundSummaryCheckpoint {
+  checkpointId: string;
+  name: string;
+  order: number;
+  status: "VALID" | "ALIAS_MATCHED" | "MISSING";
+}
+
+export interface RoundSummary {
+  label: string;
+  startTime: string;
+  expectedCount: number;
+  achievedCount: number;
+  checkpoints: RoundSummaryCheckpoint[];
+}
+
 interface RoundDef {
   label: string;
   startTime: string; // HH:mm
@@ -58,6 +73,8 @@ export async function runValidation(params: {
     name: c.name,
     aliases: c.aliases.filter((a) => a.approved).map((a) => a.alias)
   }));
+  const checkpointOrderMap = new Map(plant.checkpoints.map((c) => [c.id, c.order]));
+  const checkpointsInOrder = plant.checkpoints.slice().sort((a, b) => a.order - b.order);
 
   const rounds: RoundDef[] = plant.roundSchedules
     .slice()
@@ -82,6 +99,7 @@ export async function runValidation(params: {
     matchedRound: string | null;
     status: IssueCategory;
     confidence: number | null;
+    outOfSequence: boolean;
   }[] = [];
 
   for (const line of rawLines) {
@@ -98,7 +116,8 @@ export async function runValidation(params: {
         normalizedTime: null,
         matchedRound: null,
         status: "MALFUNCTION",
-        confidence: null
+        confidence: null,
+        outOfSequence: false
       });
       continue;
     }
@@ -119,7 +138,8 @@ export async function runValidation(params: {
         normalizedTime: null,
         matchedRound: null,
         status: "MALFUNCTION",
-        confidence: match.confidence
+        confidence: match.confidence,
+        outOfSequence: false
       });
       continue;
     }
@@ -137,7 +157,8 @@ export async function runValidation(params: {
         normalizedTime: normTime.time,
         matchedRound: null,
         status: "EXTRA",
-        confidence: match.confidence
+        confidence: match.confidence,
+        outOfSequence: false
       });
       continue;
     }
@@ -155,7 +176,8 @@ export async function runValidation(params: {
         normalizedTime: normTime.time,
         matchedRound: null,
         status: "REVIEW_REQUIRED",
-        confidence: match.confidence
+        confidence: match.confidence,
+        outOfSequence: false
       });
       continue;
     }
@@ -174,7 +196,8 @@ export async function runValidation(params: {
         normalizedTime: normTime.time,
         matchedRound: null,
         status: "OUT_OF_TIME",
-        confidence: match.confidence
+        confidence: match.confidence,
+        outOfSequence: false
       });
       continue;
     }
@@ -193,7 +216,8 @@ export async function runValidation(params: {
         normalizedTime: normTime.time,
         matchedRound: round.label,
         status: "DUPLICATE",
-        confidence: match.confidence
+        confidence: match.confidence,
+        outOfSequence: false
       });
       continue;
     }
@@ -211,9 +235,43 @@ export async function runValidation(params: {
       normalizedTime: normTime.time,
       matchedRound: round.label,
       status: match.matchType === "EXACT" ? "VALID" : "ALIAS_MATCHED",
-      confidence: match.confidence
+      confidence: match.confidence,
+      outOfSequence: false
     });
   }
+
+  // Route-order validation: within each round, checkpoints must be punched in the
+  // master's configured route order. Walk each round's valid punches in the order
+  // they were parsed (== chronological order in the source PDF) and flag any punch
+  // whose checkpoint order regresses relative to the highest order seen so far in
+  // that round. This is additive/informational — it does not change VALID/
+  // ALIAS_MATCHED status or the achieved-count scoring, only flags the record and
+  // adds a reviewable issue row, since the written spec only asks to "detect"
+  // out-of-sequence punches, not exclude them from achievement.
+  const recordsByRound = new Map<string, typeof parsedRecords>();
+  for (const r of parsedRecords) {
+    if ((r.status === "VALID" || r.status === "ALIAS_MATCHED") && r.matchedRound) {
+      if (!recordsByRound.has(r.matchedRound)) recordsByRound.set(r.matchedRound, []);
+      recordsByRound.get(r.matchedRound)!.push(r);
+    }
+  }
+  const sequenceIssueDetails: { message: string; detail?: string }[] = [];
+  for (const [roundLabel, recs] of recordsByRound) {
+    let maxOrderSeen = -1;
+    for (const r of recs) {
+      const order = checkpointOrderMap.get(r.matchedCheckpointId!) ?? 0;
+      if (order < maxOrderSeen) {
+        r.outOfSequence = true;
+        sequenceIssueDetails.push({
+          message: `Out-of-sequence punch in ${roundLabel}: "${r.normalizedCheckpoint}" (expected after a later route checkpoint)`,
+          detail: r.rawLine
+        });
+      } else {
+        maxOrderSeen = order;
+      }
+    }
+  }
+  const outOfSequenceCount = sequenceIssueDetails.length;
 
   const validAchieved = parsedRecords.filter((r) => r.status === "VALID" || r.status === "ALIAS_MATCHED").length;
   const plannedTarget = plant.targetCount;
@@ -236,6 +294,31 @@ export async function runValidation(params: {
   }
   const missingCount = missingCombos.length;
 
+  // Round-wise validation summary: expected vs achieved checkpoints per round,
+  // in route order, for display in the UI and for reprinting saved reports later.
+  const roundSummary: RoundSummary[] = rounds.map((r) => {
+    const checkpoints: RoundSummaryCheckpoint[] = checkpointsInOrder.map((cp) => {
+      const key = `${r.label}::${cp.id}`;
+      const achieved = seenRoundCheckpoint.has(key);
+      const rec = achieved
+        ? parsedRecords.find((pr) => pr.matchedCheckpointId === cp.id && pr.matchedRound === r.label)
+        : undefined;
+      return {
+        checkpointId: cp.id,
+        name: cp.name,
+        order: cp.order,
+        status: achieved ? ((rec?.status as "VALID" | "ALIAS_MATCHED") ?? "VALID") : "MISSING"
+      };
+    });
+    return {
+      label: r.label,
+      startTime: r.startTime,
+      expectedCount: master.length,
+      achievedCount: checkpoints.filter((c) => c.status !== "MISSING").length,
+      checkpoints
+    };
+  });
+
   const report = await prisma.validationReport.create({
     data: {
       plantId: plant.id,
@@ -251,6 +334,8 @@ export async function runValidation(params: {
       malfunctionCount,
       reviewCount,
       outOfTimeCount,
+      outOfSequenceCount,
+      roundSummaryJson: JSON.stringify(roundSummary),
       parsedRecords: { create: parsedRecords },
       issues: {
         create: [
@@ -268,6 +353,7 @@ export async function runValidation(params: {
           ...parsedRecords
             .filter((r) => r.status === "DUPLICATE")
             .map((r) => ({ category: "DUPLICATE", message: `Duplicate punch at ${r.matchedRound}: "${r.normalizedCheckpoint}"`, detail: r.rawLine })),
+          ...sequenceIssueDetails.map((s) => ({ category: "OUT_OF_SEQUENCE", message: s.message, detail: s.detail })),
           ...parsedRecords
             .filter((r) => r.status === "MALFUNCTION")
             .map((r) => ({ category: "MALFUNCTION", message: "Unparseable line", detail: r.rawLine })),
