@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Plant {
+  id                String           @id @default(cuid())
+  name              String           @unique
+  active            Boolean          @default(true)
+  targetCount       Int
+  toleranceMinutes  Int              @default(30)
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  checkpoints       Checkpoint[]
+  roundSchedules    RoundSchedule[]
+  reports           ValidationReport[]
+}
+
+model Checkpoint {
+  id        String            @id @default(cuid())
+  plantId   String
+  name      String
+  order     Int               @default(0)
+  createdAt DateTime          @default(now())
+
+  plant     Plant             @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  aliases   CheckpointAlias[]
+
+  @@unique([plantId, name])
+}
+
+model CheckpointAlias {
+  id           String     @id @default(cuid())
+  checkpointId String
+  alias        String
+  approved     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+
+  checkpoint   Checkpoint @relation(fields: [checkpointId], references: [id], onDelete: Cascade)
+
+  @@unique([checkpointId, alias])
+}
+
+model RoundSchedule {
+  id        String   @id @default(cuid())
+  plantId   String
+  label     String
+  startTime String
+  order     Int      @default(0)
+
+  plant     Plant    @relation(fields: [plantId], references: [id], onDelete: Cascade)
+
+  @@unique([plantId, label])
+}
+
+model ValidationReport {
+  id                String            @id @default(cuid())
+  plantId           String
+  patrolDate        String
+  fileName          String
+  rawText           String
+  plannedTarget     Int
+  validAchieved     Int
+  achievedPercent   Float
+  missingCount      Int
+  duplicateCount    Int
+  extraCount        Int
+  malfunctionCount  Int
+  reviewCount       Int
+  outOfTimeCount    Int
+  remarks           String?
+  createdAt         DateTime          @default(now())
+
+  plant             Plant             @relation(fields: [plantId], references: [id])
+  parsedRecords     ParsedRecord[]
+  issues            ValidationIssue[]
+}
+
+model ParsedRecord {
+  id                 String            @id @default(cuid())
+  reportId           String
+  lineNumber         Int
+  rawLine            String
+  guard              String?
+  rawCheckpoint      String?
+  normalizedCheckpoint String?
+  matchedCheckpointId String?
+  matchType          String?
+  rawTime            String?
+  normalizedTime     String?
+  matchedRound       String?
+  status             String
+  confidence         Float?
+
+  report             ValidationReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model ValidationIssue {
+  id          String            @id @default(cuid())
+  reportId    String
+  category    String
+  message     String
+  detail      String?
+  createdAt   DateTime          @default(now())
+
+  report      ValidationReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
