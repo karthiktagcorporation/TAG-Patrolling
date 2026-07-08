@@ -83,15 +83,6 @@ export default function PlantDetail() {
             className="border rounded px-2 py-1 w-full mt-1"
           />
         </label>
-        <label className="text-sm">
-          Tolerance (minutes)
-          <input
-            type="number"
-            defaultValue={plant.toleranceMinutes}
-            onBlur={(e) => saveMeta("toleranceMinutes", Number(e.target.value))}
-            className="border rounded px-2 py-1 w-full mt-1"
-          />
-        </label>
         <label className="text-sm col-span-2">
           Notes
           <textarea

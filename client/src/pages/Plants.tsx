@@ -38,7 +38,6 @@ export default function Plants() {
               <th>Active</th>
               <th>Checkpoints</th>
               <th>Target</th>
-              <th>Tolerance (min)</th>
               <th></th>
             </tr>
           </thead>
@@ -58,7 +57,6 @@ export default function Plants() {
                 </td>
                 <td>{p.checkpoints.length}</td>
                 <td>{p.targetCount}</td>
-                <td>{p.toleranceMinutes}</td>
                 <td>
                   <Link to={`/plants/${p.id}`} className="text-tag-red hover:underline">
                     Edit

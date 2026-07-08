@@ -8,7 +8,6 @@ import PlantDetail from "./pages/PlantDetail";
 import ReportUpload from "./pages/ReportUpload";
 import ReportView from "./pages/ReportView";
 import History from "./pages/History";
-import Settings from "./pages/Settings";
 
 function Protected({ children }: { children: JSX.Element }) {
   const { authenticated } = useAuth();
@@ -36,7 +35,6 @@ export default function App() {
             <Route path="/reports/upload" element={<ReportUpload />} />
             <Route path="/reports/:id" element={<ReportView />} />
             <Route path="/history" element={<History />} />
-            <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

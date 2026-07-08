@@ -5,8 +5,8 @@ module.exports = {
     extend: {
       colors: {
         tag: {
-          red: "#D3352B",
-          gray: "#6D6E71",
+          red: "#cb3127",
+          gray: "#727071",
           dark: "#1B2430"
         }
       }

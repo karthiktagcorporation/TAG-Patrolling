@@ -6,8 +6,7 @@ const links = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/plants", label: "Plant Master" },
   { to: "/reports/upload", label: "Upload Patrol PDF" },
-  { to: "/history", label: "History" },
-  { to: "/settings", label: "Settings" }
+  { to: "/history", label: "History" }
 ];
 
 export default function Layout() {

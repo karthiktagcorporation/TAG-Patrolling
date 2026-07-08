@@ -1,5 +1,36 @@
 # PROGRESS
 
+## 2026-07-08 — UI/UX simplification + real logo + multi-plant upload
+
+Follow-up change requests against the running app:
+
+1. **Real TAG logo installed.** Extracted the official mark from
+   `TAG-logo-andColors.pdf` (rendered at 300dpi via Poppler `pdftoppm`,
+   cropped tight with Pillow) and saved it to `client/public/tag-logo.png`
+   (946×514). `TagLogo.tsx` already prefers this file with **height-only**
+   CSS sizing (`width:auto`), so it now shows the real logo at its natural
+   aspect ratio everywhere (login, sidebar, print letterhead) with zero
+   distortion. Brand colors in `tailwind.config.cjs` updated to the exact
+   values from the brand sheet: red `#cb3127`, grey `#727071`.
+2. **Removed "Tolerance (min)"** from the Plant Master list and the
+   per-plant editor (`Plants.tsx`, `PlantDetail.tsx`). The `toleranceMinutes`
+   DB column and the engine's use of it are untouched (default 30) — only
+   the UI controls were removed, so nothing needs a migration.
+3. **Removed Session Timeout** control — it lived only on the now-removed
+   Settings page. Idle timeout still works from `SESSION_TIMEOUT_MINUTES`
+   in `server/.env` (default 30 min).
+4. **Removed the Settings page entirely** (`Settings.tsx` deleted, nav link
+   and route removed from `Layout.tsx`/`App.tsx`). The inert `/api/settings`
+   backend route was left in place (harmless, unused).
+5. **Multi-file PDF upload with automatic plant detection.** The upload page
+   now accepts multiple PDFs at once; the plant and patrol date are derived
+   from each filename (new `server/src/parsing/plantFromFilename.ts`,
+   handling both digit and word forms — "TAG 1 A", "TAG ONE A", "TAG FOUR",
+   "STK", "SSVF" — and "16 June 26" style dates). `/api/reports/upload` now
+   takes `files[]` and returns one result row per file so a bad filename
+   doesn't fail the batch. Verified end-to-end: 3 mixed files each detected
+   the correct plant + date.
+
 ## 2026-07-07 (later) — Excel-driven master data update
 
 Source: `PUNCHING STATIONS - Copy for GM.xlsx`. This was an **update**, not a

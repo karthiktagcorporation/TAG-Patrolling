@@ -68,7 +68,17 @@ the app still renders correctly out of the box.
 
 **To use the real logo file**: save it as `client/public/tag-logo.png`
 (any resolution — it's scaled by height only) and it is picked up
-automatically, no code change needed.
+automatically, no code change needed. The current file was extracted from
+the official `TAG-logo-andColors.pdf` brand sheet (natural size 946×514).
+
+## Uploading patrol PDFs
+
+The Upload page accepts **multiple PDFs at once**. For each file the plant
+and patrol date are detected automatically from the filename — e.g.
+`TAG 1 A 16 June 26.pdf` → TAG 1A / 2026-06-16, `TAG FOUR 06 June 26.pdf`
+→ TAG 4 / 2026-06-06. If a filename has no date, the page's "Fallback
+Patrol Date" is used. Detection logic lives in
+`server/src/parsing/plantFromFilename.ts`.
 
 ## Plant master data (route patterns, round schedules, targets)
 
