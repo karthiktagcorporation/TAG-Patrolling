@@ -1,5 +1,23 @@
 # PROGRESS
 
+## 2026-07-08 (3) — Checkpoint renames + dashboard columns/print
+
+1. **Checkpoint renames** (seed updated + reseeded, history preserved):
+   - TAG 1B: "RUBBER MOLDING GATE" → "RUBBER MOLDING ENTRANCE"
+     (aliases now: "RUBBER MOLDING", "RUBBER MOLDING GATE" → the sample PDF's
+     "RUBBER MOLDING" still matches).
+   - TAG 3: "SECURITY ROOM" → "SECURITY" (alias "SECURITY ROOM" kept for the
+     old spelling; the sample PDF's "SECURITY" now matches EXACT instead of
+     REVIEW_REQUIRED).
+   - TAG 2: "Near Temple outside S1" → "Near Temple outside S 1".
+   Verified: TAG 1B and TAG 3 samples validate with 0 EXTRA after the rename.
+2. **Dashboard "Recent Validations" now shows per-plant Target, Valid,
+   Missing, Extra and Out-of-Time** columns (the report objects already
+   carried these fields — no backend change needed).
+3. **Dashboard Print / Save PDF** button added (uses the same browser-print
+   path as the report page), with a print-only TAG letterhead and the
+   action buttons + the row "View" links hidden via `.no-print`.
+
 ## 2026-07-08 (later) — Round-window assignment fix + history reset
 
 Four fixes based on live feedback:

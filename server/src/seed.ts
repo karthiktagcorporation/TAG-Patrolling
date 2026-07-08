@@ -55,8 +55,8 @@ const PLANTS: PlantSeed[] = [
     targetCount: 52,
     intervalMinutes: 30,
     roundCount: 13,
-    checkpoints: ["BIKE PARKING", "RUBBER MOLDING GATE", "MAIN ENTRANCE", "DESMA ENTRANCE"],
-    aliases: { "RUBBER MOLDING GATE": ["RUBBER MOLDING"] }
+    checkpoints: ["BIKE PARKING", "RUBBER MOLDING ENTRANCE", "MAIN ENTRANCE", "DESMA ENTRANCE"],
+    aliases: { "RUBBER MOLDING ENTRANCE": ["RUBBER MOLDING", "RUBBER MOLDING GATE"] }
   },
   {
     name: "TAG 2",
@@ -70,7 +70,7 @@ const PLANTS: PlantSeed[] = [
       "Irrigation Well",
       "S2 A Corner",
       "Remaining Material Area",
-      "Near Temple outside S1",
+      "Near Temple outside S 1",
       "Office Gate"
     ]
   },
@@ -79,8 +79,8 @@ const PLANTS: PlantSeed[] = [
     targetCount: 91,
     intervalMinutes: 30,
     roundCount: 13,
-    checkpoints: ["SECURITY ROOM", "MAIN ENTRANCE", "OIL TANK", "OFFICE", "ETP", "SOLAR", "CANTEEN"],
-    aliases: { "SECURITY ROOM": ["SECURITY"] }
+    checkpoints: ["SECURITY", "MAIN ENTRANCE", "OIL TANK", "OFFICE", "ETP", "SOLAR", "CANTEEN"],
+    aliases: { SECURITY: ["SECURITY ROOM"] }
   },
   {
     name: "TAG 4",
