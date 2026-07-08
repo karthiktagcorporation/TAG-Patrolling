@@ -1,5 +1,35 @@
 # PROGRESS
 
+## 2026-07-08 (later) — Round-window assignment fix + history reset
+
+Four fixes based on live feedback:
+
+1. **Round 1 only after 11:00 PM.** Round assignment is now anchored at 23:00.
+   Every punch time is measured as "minutes since 23:00" (wrapping past
+   midnight), so any punch before 23:00 (e.g. the 22:00–22:04 pre-shift
+   punches in the TAG 1A sample) falls outside every round window and is
+   classified `OUT_OF_TIME` instead of being counted as Round 1. Verified.
+2. **Rounds follow the time pattern strictly.** Replaced the old
+   nearest-time (`findNearestRound`, ±tolerance) matching with contiguous,
+   forward **time windows** built directly from each plant's round schedule:
+   round N owns `[its start, the next round's start)`, last round is one
+   interval wide. No tolerance knob involved (matches the earlier removal of
+   the Tolerance UI).
+3. **Reset option for Dashboard & History.** New `DELETE /api/history/reset`
+   clears all reports + parsed records + issues (Plant Master untouched), with
+   a confirm-guarded "Reset Data" button on both the Dashboard and History
+   pages. Verified (deleted 17 old reports; dashboard went to empty).
+4. **Round 9 / Round 10 same-interval split fixed.** This was the visible
+   symptom of the nearest-time matcher: punches a few minutes apart within one
+   physical round (e.g. 03:13 and 03:17) were split across Round 9 (03:00) and
+   Round 10 (03:30) because 03:17 was nearer to 03:30. Forward windows keep the
+   whole visit together — verified: 03:03–03:06 TAG 1A punches all land in
+   Round 9, and TAG 4's 40-min schedule maps cleanly across its 10 rounds.
+
+Engine change is confined to `server/src/services/validationEngine.ts`
+(`minutesFromAnchor` / `buildRoundWindows` / `assignRoundByWindow` replace
+`minutesFromMidnight` / `findNearestRound`). No schema change, no reseed.
+
 ## 2026-07-08 — UI/UX simplification + real logo + multi-plant upload
 
 Follow-up change requests against the running app:

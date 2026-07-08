@@ -20,9 +20,23 @@ export default function History() {
 
   useEffect(refresh, [plantId, date, status]);
 
+  async function handleReset() {
+    if (!window.confirm("Reset all validation history? This permanently deletes every uploaded report. Plant Master data is kept.")) return;
+    await api.delete("/history/reset");
+    refresh();
+  }
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-tag-dark">History</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-tag-dark">History</h1>
+        <button
+          onClick={handleReset}
+          className="text-sm border border-red-300 text-red-600 hover:bg-red-50 rounded px-3 py-1.5"
+        >
+          Reset Data
+        </button>
+      </div>
 
       <div className="bg-white rounded-xl shadow p-4 flex gap-3 flex-wrap">
         <select value={plantId} onChange={(e) => setPlantId(e.target.value)} className="border rounded px-2 py-1">

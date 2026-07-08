@@ -63,6 +63,29 @@ the status assignment in the sequence-check loop in
 `server/src/services/validationEngine.ts` rather than the achievement
 formula itself.
 
+## Round assignment: forward time windows (updated 2026-07-08)
+
+Round assignment is **window-based**, not nearest-time. The shift is anchored
+at 23:00 (Round 1); every time is converted to "minutes since 23:00" wrapping
+past midnight (`minutesFromAnchor`). `buildRoundWindows` turns the plant's
+round schedule into contiguous half-open intervals — round N owns
+`[start(N), start(N+1))`, the last round is one interval wide — and
+`assignRoundByWindow` places each punch in the single window it falls in, or
+returns null (→ `OUT_OF_TIME`) if it's outside all of them.
+
+Two consequences, both intended:
+- A punch **before 23:00** wraps to a large minutes-value (22:00 → 1380) that's
+  past every window, so it's `OUT_OF_TIME` — enforcing "Round 1 is only ever
+  after 11:00 PM".
+- Punches of one physical visit stay together even when they straddle a round
+  boundary in clock terms. Guards always punch at/after the scheduled round
+  time, so forward windows are correct; this fixed the reported bug where
+  03:13 and 03:17 were split across Round 9 (03:00) and Round 10 (03:30).
+
+There is no per-punch tolerance anymore (the old `findNearestRound` ±tolerance
+is gone). `Plant.toleranceMinutes` still exists in the DB but is unused by the
+engine.
+
 ## Round schedule model (updated 2026-07-07)
 
 `RoundSchedule` rows are still just `{label, startTime, order}` per plant —

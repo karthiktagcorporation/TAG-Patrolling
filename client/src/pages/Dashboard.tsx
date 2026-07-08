@@ -24,16 +24,39 @@ function Card({ label, value, color }: { label: string; value: string | number; 
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [resetting, setResetting] = useState(false);
 
-  useEffect(() => {
+  function load() {
     api.get("/history/dashboard").then((res) => setData(res.data));
-  }, []);
+  }
+
+  useEffect(load, []);
+
+  async function handleReset() {
+    if (!window.confirm("Reset all validation history? This permanently deletes every uploaded report. Plant Master data is kept.")) return;
+    setResetting(true);
+    try {
+      await api.delete("/history/reset");
+      load();
+    } finally {
+      setResetting(false);
+    }
+  }
 
   if (!data) return <div>Loading dashboard...</div>;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-tag-dark">Dashboard</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-tag-dark">Dashboard</h1>
+        <button
+          onClick={handleReset}
+          disabled={resetting}
+          className="text-sm border border-red-300 text-red-600 hover:bg-red-50 rounded px-3 py-1.5 disabled:opacity-60"
+        >
+          {resetting ? "Resetting..." : "Reset Data"}
+        </button>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card label="Total Plants" value={data.totalPlants} color="text-tag-dark" />
         <Card label="Today's Uploads" value={data.todayUploads} color="text-tag-dark" />

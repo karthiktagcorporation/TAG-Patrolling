@@ -58,4 +58,16 @@ router.get("/dashboard", async (_req, res) => {
   });
 });
 
+/**
+ * Reset: deletes all validation history (reports + their parsed records + issues).
+ * Plant Master data (plants, checkpoints, aliases, rounds) is NOT touched.
+ * Backs the "Reset" buttons on the Dashboard and History pages.
+ */
+router.delete("/reset", async (_req, res) => {
+  await prisma.validationIssue.deleteMany({});
+  await prisma.parsedRecord.deleteMany({});
+  const result = await prisma.validationReport.deleteMany({});
+  res.json({ ok: true, deletedReports: result.count });
+});
+
 export default router;

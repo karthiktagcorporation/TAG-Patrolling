@@ -35,25 +35,49 @@ interface RoundDef {
   order: number;
 }
 
-function minutesFromMidnight(hhmm: string): number {
+// The nightly patrol is anchored at 23:00 (11:00 PM) = Round 1. Every time is
+// measured as "minutes elapsed since 23:00", wrapping past midnight, so the whole
+// shift maps to a simple increasing scale: 23:00->0, 23:30->30, 00:00->60,
+// 03:00->240, 05:00->360, etc. A time before 23:00 wraps to a large value
+// (e.g. 22:00 -> 1380) and therefore falls outside every round window — which is
+// exactly the rule "Round 1 is only ever after 11:00 PM".
+const SHIFT_ANCHOR_MIN = 23 * 60;
+
+function minutesFromAnchor(hhmm: string): number {
   const [h, m] = hhmm.split(":").map(Number);
-  return h * 60 + m;
+  return ((h * 60 + m) - SHIFT_ANCHOR_MIN + 1440) % 1440;
 }
 
-/** Finds the nearest round window for a given time-of-day, honoring the plant tolerance. */
-function findNearestRound(timeHHmmss: string, rounds: RoundDef[], toleranceMinutes: number): RoundDef | null {
-  const [h, m] = timeHHmmss.split(":").map(Number);
-  const t = h * 60 + m;
+interface RoundWindow {
+  round: RoundDef;
+  start: number; // minutes from 23:00 anchor (inclusive)
+  end: number; // minutes from anchor (exclusive)
+}
 
-  let best: { round: RoundDef; diff: number } | null = null;
-  for (const r of rounds) {
-    const rMin = minutesFromMidnight(r.startTime);
-    // handle overnight wraparound (23:00 round vs 00:30 record etc.) using 1440-based circular distance
-    let diff = Math.abs(t - rMin);
-    diff = Math.min(diff, 1440 - diff);
-    if (!best || diff < best.diff) best = { round: r, diff };
+/**
+ * Builds contiguous, forward-looking time windows straight from the plant's round
+ * schedule. Each round owns the half-open interval [its start, the next round's
+ * start); the last round's window is one interval wide. Because guards punch a
+ * round AT or AFTER its scheduled time (never before), forward windows keep every
+ * punch of one physical round together — fixing the bug where punches a few minutes
+ * apart (e.g. 03:13 and 03:17) were split across Round 9 (03:00) and Round 10 (03:30)
+ * by nearest-time matching.
+ */
+function buildRoundWindows(rounds: RoundDef[]): RoundWindow[] {
+  const offsets = rounds.map((r) => ({ round: r, offset: minutesFromAnchor(r.startTime) }));
+  offsets.sort((a, b) => a.offset - b.offset);
+  return offsets.map((o, i) => {
+    const next = i < offsets.length - 1 ? offsets[i + 1].offset : o.offset + (o.offset - (offsets[i - 1]?.offset ?? o.offset - 30));
+    return { round: o.round, start: o.offset, end: next };
+  });
+}
+
+/** Assigns a time strictly to the round window it falls in, or null if outside all windows. */
+function assignRoundByWindow(timeHHmmss: string, windows: RoundWindow[]): RoundDef | null {
+  const p = minutesFromAnchor(timeHHmmss);
+  for (const w of windows) {
+    if (p >= w.start && p < w.end) return w.round;
   }
-  if (best && best.diff <= toleranceMinutes) return best.round;
   return null;
 }
 
@@ -81,7 +105,7 @@ export async function runValidation(params: {
     .sort((a, b) => a.order - b.order)
     .map((r) => ({ label: r.label, startTime: r.startTime, order: r.order }));
 
-  const tolerance = plant.toleranceMinutes;
+  const roundWindows = buildRoundWindows(rounds);
   const rawLines = parseLinesFromText(params.rawText);
 
   const seenRoundCheckpoint = new Set<string>(); // `${roundLabel}::${checkpointId}` for duplicate detection
@@ -182,7 +206,7 @@ export async function runValidation(params: {
       continue;
     }
 
-    const round = findNearestRound(normTime.time!, rounds, tolerance);
+    const round = assignRoundByWindow(normTime.time!, roundWindows);
     if (!round) {
       parsedRecords.push({
         lineNumber: line.lineNumber,
@@ -359,7 +383,7 @@ export async function runValidation(params: {
             .map((r) => ({ category: "MALFUNCTION", message: "Unparseable line", detail: r.rawLine })),
           ...parsedRecords
             .filter((r) => r.status === "OUT_OF_TIME")
-            .map((r) => ({ category: "OUT_OF_TIME", message: `"${r.normalizedCheckpoint}" punched outside round tolerance`, detail: r.rawLine }))
+            .map((r) => ({ category: "OUT_OF_TIME", message: `"${r.normalizedCheckpoint}" punched outside all round time windows (before 23:00 or after the last round)`, detail: r.rawLine }))
         ]
       }
     },
