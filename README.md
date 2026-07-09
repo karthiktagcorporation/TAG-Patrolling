@@ -37,7 +37,7 @@ npm run dev                  # runs server (port 4000) + client (port 5173) toge
 ```
 
 Open http://localhost:5173, log in with the password from `server/.env`
-(`APP_PASSWORD`, default `Tag%tpm$26`).
+(`APP_PASSWORD`, default `Tag@2026`).
 
 ## Production build
 

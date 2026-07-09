@@ -46,7 +46,7 @@ nano server/.env
 # Set at minimum:
 #   NODE_ENV=production
 #   SESSION_SECRET=<generate a long random string>
-#   APP_PASSWORD=Tag%tpm$26   (or your production password)
+#   APP_PASSWORD=Tag@2026   (or your production password)
 #   DATABASE_URL="file:./dev.db"
 ```
 
