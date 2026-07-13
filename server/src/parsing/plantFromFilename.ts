@@ -24,17 +24,26 @@ function normalizeToken(name: string): string {
     .replace(/[^A-Z0-9]/g, "");
 }
 
+// Extra filename tokens that should map to a plant whose current name no longer
+// appears in old file names. TAG 5 was formerly "SSVF" and patrol exports still
+// carry the SSVF name, so keep it as a recognized filename alias.
+const PLANT_NAME_ALIASES: Record<string, string[]> = {
+  "TAG 5": ["SSVF"]
+};
+
 /** Returns the id of the best-matching plant for a filename, or null if none. */
 export function detectPlantId(fileName: string, plants: { id: string; name: string }[]): string | null {
   const normFile = normalizeToken(fileName);
 
   let best: { id: string; tokenLength: number } | null = null;
   for (const p of plants) {
-    const token = normalizeToken(p.name); // e.g. "TAG 1A" -> "TAG1A"
-    if (token && normFile.includes(token)) {
-      // Prefer the longest matching plant token so "TAG1A" wins over any shorter
-      // partial and "TAG1A" is never confused with "TAG1B".
-      if (!best || token.length > best.tokenLength) best = { id: p.id, tokenLength: token.length };
+    const tokens = [p.name, ...(PLANT_NAME_ALIASES[p.name] ?? [])].map(normalizeToken);
+    for (const token of tokens) {
+      if (token && normFile.includes(token)) {
+        // Prefer the longest matching token so "TAG1A" wins over any shorter
+        // partial and "TAG1A" is never confused with "TAG1B".
+        if (!best || token.length > best.tokenLength) best = { id: p.id, tokenLength: token.length };
+      }
     }
   }
   return best?.id ?? null;

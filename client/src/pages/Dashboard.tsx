@@ -46,6 +46,20 @@ export default function Dashboard() {
 
   if (!data) return <div>Loading dashboard...</div>;
 
+  const totals = data.recent.reduce(
+    (acc, r) => {
+      acc.target += r.plannedTarget ?? 0;
+      acc.valid += r.validAchieved ?? 0;
+      acc.missing += r.missingCount ?? 0;
+      acc.duplicate += r.duplicateCount ?? 0;
+      acc.extra += r.extraCount ?? 0;
+      acc.outOfTime += r.outOfTimeCount ?? 0;
+      return acc;
+    },
+    { target: 0, valid: 0, missing: 0, duplicate: 0, extra: 0, outOfTime: 0 }
+  );
+  const totalAchievedPercent = totals.target > 0 ? Math.round((totals.valid / totals.target) * 10000) / 100 : 0;
+
   return (
     <div className="space-y-6">
       {/* Print-only letterhead */}
@@ -77,7 +91,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card label="Total Plants" value={data.totalPlants} color="text-tag-dark" />
+        <Card label="Plants Uploaded" value={data.totalPlants} color="text-tag-dark" />
         <Card label="Today's Uploads" value={data.todayUploads} color="text-tag-dark" />
         <Card
           label="Latest Achieved %"
@@ -135,6 +149,22 @@ export default function Dashboard() {
                 </tr>
               )}
             </tbody>
+            {data.recent.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-gray-300 font-bold">
+                  <td className="py-2">Total</td>
+                  <td></td>
+                  <td>{totals.target}</td>
+                  <td className="text-green-700">{totals.valid}</td>
+                  <td>{totalAchievedPercent}%</td>
+                  <td className="text-red-600">{totals.missing}</td>
+                  <td className="text-yellow-600">{totals.duplicate}</td>
+                  <td className="text-orange-600">{totals.extra}</td>
+                  <td className="text-pink-600">{totals.outOfTime}</td>
+                  <td className="no-print"></td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

@@ -98,7 +98,7 @@ const PLANTS: PlantSeed[] = [
     checkpoints: ["ENTRANCE", "BUILDING INSIDE", "COMPOUND WALL"]
   },
   {
-    name: "SSVF",
+    name: "TAG 5",
     targetCount: 39,
     intervalMinutes: 30,
     roundCount: 13,

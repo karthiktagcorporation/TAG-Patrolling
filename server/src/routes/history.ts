@@ -31,10 +31,16 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/dashboard", async (_req, res) => {
-  const plants = await prisma.plant.count();
   const today = new Date().toISOString().slice(0, 10);
   const todayUploads = await prisma.validationReport.count({ where: { patrolDate: today } });
   const latest = await prisma.validationReport.findFirst({ orderBy: { createdAt: "desc" }, include: { plant: true } });
+
+  // "Plants uploaded" = number of distinct plants that have at least one uploaded
+  // report (so uploading 3 plant files shows 3, 2 files shows 2, etc.).
+  const distinctPlants = await prisma.validationReport.findMany({
+    distinct: ["plantId"],
+    select: { plantId: true }
+  });
 
   const agg = await prisma.validationReport.aggregate({
     _sum: { duplicateCount: true, missingCount: true, extraCount: true, malfunctionCount: true }
@@ -42,12 +48,12 @@ router.get("/dashboard", async (_req, res) => {
 
   const recent = await prisma.validationReport.findMany({
     orderBy: { createdAt: "desc" },
-    take: 10,
+    take: 50,
     include: { plant: true }
   });
 
   res.json({
-    totalPlants: plants,
+    totalPlants: distinctPlants.length,
     todayUploads,
     latestAchievedPercent: latest?.achievedPercent ?? null,
     duplicateCount: agg._sum.duplicateCount ?? 0,

@@ -1,5 +1,20 @@
 # PROGRESS
 
+## 2026-07-11 — Dashboard totals + plants-uploaded count + SSVF→TAG 5
+
+1. **"Total Plants" card → "Plants Uploaded"**: now shows the number of
+   distinct plants that actually have uploaded reports (upload 3 plant files →
+   3), computed via a `distinct: ["plantId"]` query in the dashboard endpoint,
+   not the master plant count.
+2. **Recent Validations totals row** added: sums Target, Valid, Missing,
+   Duplicate, Extra and Out-of-Time across the listed uploads, with a combined
+   Achieved % = total valid / total target. Dashboard `recent` take raised
+   10 → 50 so the totals cover all of today's uploads.
+3. **Plant SSVF renamed to TAG 5**: renamed the existing plant record in place
+   (history preserved) and updated `seed.ts`. "SSVF" kept as a filename alias
+   in `plantFromFilename.ts` so old `SSVF ....pdf` exports still auto-route to
+   TAG 5. Verified: SSVF-named file → TAG 5, totals math correct.
+
 ## 2026-07-08 (3) — Checkpoint renames + dashboard columns/print
 
 1. **Checkpoint renames** (seed updated + reseeded, history preserved):
